@@ -58,7 +58,7 @@ This project exceeds the base requirements with professional-grade implementatio
 1.  **Clone the repository**:
    
     ```bash
-    git clone [https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git](https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git)
+    git clone https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git
     ```
    
 2.  **Install dependencies**:
