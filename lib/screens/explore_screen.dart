@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/meal_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/meal_card.dart';
+import 'dart:async';
+import 'package:lottie/lottie.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -12,8 +14,21 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  String selectedCategory = "All";
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
   String searchQuery = "";
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      setState(() => searchQuery = query);
+    });
+  }
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,19 +61,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
+                          color: Colors.black.withValues(alpha: 0.05),                          blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: TextField(
-                      onChanged: (value) => setState(() => searchQuery = value),
-                      decoration: const InputDecoration(
+                      controller: _searchController, // Connects the controller
+                      onChanged: _onSearchChanged,    // Uses the debounced function
+                      decoration: InputDecoration(
                         hintText: "Search recipes...",
-                        prefixIcon: Icon(Icons.search, color: Colors.orange),
+                        prefixIcon: const Icon(Icons.search, color: Colors.orange),
+                        // The Clear "X" button only shows if the user has typed something
+                        suffixIcon: searchQuery.isNotEmpty
+                            ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              _onSearchChanged(""); // Resets the list
+                            })
+                            : null,
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 15),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 15),
                       ),
                     ),
                   ),
@@ -80,18 +104,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: ChoiceChip(
                     label: Text(cat),
-                    selected: selectedCategory == cat,
+                    selected: navProvider.categoryFilter == cat,
                     onSelected: (selected) {
-                      setState(() => selectedCategory = selected ? cat : "All");
+                      // Update the global provider instead of local state
+                      navProvider.setCategoryAndNavigate(selected ? cat : "All");
                     },
                     selectedColor: Colors.orange,
                     labelStyle: TextStyle(
-                      color: selectedCategory == cat ? Colors.white : Colors.black,
+                      color: navProvider.categoryFilter == cat ? Colors.white : Colors.black,
                       fontWeight: FontWeight.bold,
                     ),
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    side: BorderSide(color: selectedCategory == cat ? Colors.orange : Colors.grey[300]!),
+                    side: BorderSide(color: navProvider.categoryFilter == cat ? Colors.orange : Colors.grey[300]!),
                   ),
                 ))
                     .toList(),
@@ -122,19 +147,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   // Fancy Empty State Widget
+  // Inside _ExploreScreenState class in explore_screen.dart
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off_rounded, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 10),
-          Text(
-            "No recipes found",
-            style: TextStyle(color: Colors.grey[600], fontSize: 18, fontWeight: FontWeight.w500),
-          ),
-          const Text("Try a different category or search term"),
-        ],
+      child: SingleChildScrollView( // Prevents overflow on small screens
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // CREATIVITY: High-quality animation instead of a static icon
+            Lottie.asset(
+              'assets/animations/empty_search.json',
+              height: 200,
+              repeat: true,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              "No recipes found",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Try a different category or search term",
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }

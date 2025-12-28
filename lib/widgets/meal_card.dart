@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // <--- ADD THIS
 import '../models/meal_model.dart';
 import '../screens/meal_detail_screen.dart';
 
 class MealCard extends StatelessWidget {
   final Meal meal;
-  final String? heroSuffix; // To make tags unique per section
+  final String? heroSuffix;
 
   const MealCard({super.key, required this.meal, this.heroSuffix});
 
   @override
   Widget build(BuildContext context) {
-    // Unique tag (e.g., 'meal-image-52883-recommended')
     final String heroTag = 'meal-image-${meal.id}${heroSuffix ?? ""}';
 
     return GestureDetector(
@@ -28,12 +28,22 @@ class MealCard extends StatelessWidget {
             Expanded(
               child: Hero(
                 tag: heroTag,
-                child: Image.network(meal.imageUrl, fit: BoxFit.cover),
+                child: CachedNetworkImage( // Now this will be recognized
+                  imageUrl: meal.imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => const Icon(Icons.broken_image),
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(meal.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                  meal.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis
+              ),
             ),
           ],
         ),

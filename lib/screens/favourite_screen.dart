@@ -5,6 +5,7 @@ import '../models/meal_model.dart';
 import '../providers/meal_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../screens/meal_detail_screen.dart';
+import 'package:lottie/lottie.dart';
 
 class FavouriteScreen extends StatefulWidget {
   const FavouriteScreen({super.key});
@@ -78,7 +79,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05), // FIX: deprecated_member_use
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4)
           ),
@@ -88,19 +89,23 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: () {
-            // Re-map Map data back to Meal model for detail navigation
-            // FIX: Find the full meal object from MealProvider so instructions aren't empty
             final fullMeal = context.read<MealProvider>().meals.firstWhere(
                   (m) => m.id == mealData['id'],
-              orElse: () => Meal( // Fallback if not found in current list
+              orElse: () => Meal(
                 id: mealData['id'],
                 name: mealData['name'],
                 imageUrl: mealData['imageUrl'],
                 category: mealData['category'],
-                area: '', instructions: 'Please check internet for details.', ingredients: [],
+                area: 'Local Favorite',
+                // Better fallback text
+                instructions: "Please wait while we sync the full recipe...",
+                ingredients: [],
               ),
             );
-            Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailScreen(meal: fullMeal, heroTag: '',)));
+            // Pass a unique heroTag to avoid hero animation conflicts
+            Navigator.push(context, MaterialPageRoute(
+                builder: (_) => MealDetailScreen(meal: fullMeal, heroTag: 'fav-${fullMeal.id}')
+            ));
           },
           child: Row(
             children: [
@@ -147,39 +152,47 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
   }
 
   // Widget: Engaging Empty State
+  // Inside _FavouriteScreenState class in favourite_screen.dart
   Widget _buildEmptyState(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.bookmark_border_rounded, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text(
-            "Your cookbook is empty",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Save your favorite recipes to view them here later!",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 24),
-          // ... inside _buildEmptyState
-          ElevatedButton(
-            onPressed: () {
-              // FIX: Instead of Navigator.pop, use the provider to switch to the Home tab
-              context.read<NavigationProvider>().setIndex(0);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // CREATIVITY: Animated empty cookbook for professional feel
+            Lottie.asset(
+              'assets/animations/empty_cook.json',
+              height: 220,
             ),
-            child: const Text("Go Explore"),
-          ),
-        ],
+            const SizedBox(height: 16),
+            const Text(
+              "Your cookbook is empty",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Save your favorite recipes to view them here later!",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                // Switch to the Home tab via the provider
+                context.read<NavigationProvider>().setIndex(0);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                elevation: 5,
+              ),
+              child: const Text("Go Explore", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }

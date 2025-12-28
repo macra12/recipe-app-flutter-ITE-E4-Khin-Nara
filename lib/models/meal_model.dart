@@ -9,6 +9,27 @@ class Meal {
   final String? youtube; // Added for video link
   final String? source;  // Added for original recipe link
   final List<String> ingredients;
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'meal': name,
+      'category': category,
+      'area': area,
+      'instructions': instructions,
+      'mealThumb': imageUrl,
+      'tags': tags,
+      'youtube': youtube,
+      'source': source,
+      // Convert the string list back into the API's format for ingredients
+      'ingredients': ingredients.map((ing) {
+        final parts = ing.split(': ');
+        return {
+          'ingredient': parts.isNotEmpty ? parts[0] : '',
+          'measure': parts.length > 1 ? parts[1] : '',
+        };
+      }).toList(),
+    };
+  }
 
   Meal({
     required this.id,

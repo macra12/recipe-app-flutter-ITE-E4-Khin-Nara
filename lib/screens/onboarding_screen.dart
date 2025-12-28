@@ -1,53 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'main_wrapper.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
-
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _controller = PageController();
-  int _currentPage = 0;
+  final PageController _pageController = PageController();
+  int _currentIndex = 0;
+
+  // DATA DEFINITION (Fixed: Removed the 'null' getter)
+  final List<Map<String, String>> _onboardingData = [
+    {
+      "title": "Discover\nFlavors",
+      "subtitle": "Explore 60k+ premium recipes from\naround the world.",
+      "image": "https://images.pexels.com/photos/1109197/pexels-photo-1109197.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    },
+    {
+      "title": "Master\nYour Kitchen",
+      "subtitle": "Step-by-step guides to make you\nfeel like a professional chef.",
+      "image": "https://images.pexels.com/photos/2403391/pexels-photo-2403391.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    },
+    {
+      "title": "Let's\nCooking",
+      "subtitle": "Find the best recipes and start\nyour culinary journey today.",
+      "image": "https://images.unsplash.com/photo-1572715376701-98568319fd0b?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2hlZnxlbnwwfHwwfHx8MA%3D%3D",
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
+      // Stack allows the background to be truly full-screen
       body: Stack(
         children: [
-          PageView(
-            controller: _controller,
-            onPageChanged: (int page) => setState(() => _currentPage = page),
-            children: [
-              _buildFancyPage(
-                gradient: const [Color(0xFFFF9800), Color(0xFFFF5722)],
-                icon: Icons.restaurant_menu,
-                title: "Discover Recipes",
-                desc: "Explore a world of flavors with our curated list of global meals.",
+          // 1. FULL SCREEN BACKGROUND (Hamburger Style)
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 600),
+              child: CachedNetworkImage(
+                imageUrl: _onboardingData[_currentIndex]["image"]!,
+                key: ValueKey<int>(_currentIndex),
+                fit: BoxFit.cover, // Ensures it fills the phone screen
+                height: double.infinity,
+                width: double.infinity,
               ),
-              _buildFancyPage(
-                gradient: const [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                icon: Icons.kitchen,
-                title: "Cook with Ease",
-                desc: "Follow simple, step-by-step instructions for a perfect meal.",
-              ),
-              _buildLastFancyPage(),
-            ],
+            ),
           ),
-          Positioned(
-            bottom: 40, left: 20, right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(children: List.generate(3, (index) => _buildIndicator(index))),
-                _currentPage == 2
-                    ? const SizedBox.shrink()
-                    : TextButton(
-                  onPressed: () => _controller.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.easeInOut),
-                  child: const Text("NEXT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+
+          // 2. GRADIENT OVERLAY
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.4, 0.95],
+                  colors: [
+                    Colors.black.withValues(alpha: 0.1),
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.black.withValues(alpha: 0.95),
+                  ],
                 ),
+              ),
+            ),
+          ),
+
+          // 3. UI LAYER (Interactive text and buttons)
+          SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildPremiumTag(),
+                const Spacer(),
+
+                SizedBox(
+                  height: 280,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: (index) => setState(() => _currentIndex = index),
+                    itemCount: _onboardingData.length,
+                    itemBuilder: (context, index) => _buildPageText(index),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                _buildIndicators(),
+                const SizedBox(height: 40),
+
+                _buildActionButton(),
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -56,50 +102,70 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildFancyPage({required List<Color> gradient, required IconData icon, required String title, required String desc}) {
-    return Container(
+  Widget _buildPremiumTag() {
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.star, color: Colors.orange, size: 20),
+      const SizedBox(width: 8),
+      Text("60k+ Premium recipes", style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16)),
+    ]);
+  }
+
+  Widget _buildPageText(int index) {
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40),
-      decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: gradient)),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 100, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(height: 40),
-          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          Text(desc, textAlign: TextAlign.center, style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.8), height: 1.5)),
-        ],
-      ),
+      child: Column(children: [
+        Text(_onboardingData[index]["title"]!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 54, fontWeight: FontWeight.bold, height: 1.1)),
+        const SizedBox(height: 15),
+        Text(_onboardingData[index]["subtitle"]!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 18)),
+      ]),
     );
   }
 
-  Widget _buildLastFancyPage() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2196F3), Color(0xFF1565C0)])),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.favorite, size: 100, color: Colors.white),
-          const SizedBox(height: 40),
-          const Text("Get Cooking!", style: TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainWrapper())),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.blue[800], padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-            child: const Text("GET STARTED", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+  Widget _buildIndicators() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) => AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        height: 6, width: _currentIndex == index ? 28 : 8,
+        decoration: BoxDecoration(
+            color: _currentIndex == index ? const Color(0xFFE54646) : Colors.white38,
+            borderRadius: BorderRadius.circular(10)),
+      )),
+    );
+  }
+
+  Widget _buildActionButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30),
+      child: SizedBox(
+        width: double.infinity, height: 65,
+        child: ElevatedButton(
+          onPressed: () {
+            if (_currentIndex < 2) {
+              _pageController.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic);
+            } else {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainWrapper()));
+            }
+          },
+          style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE54646),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_currentIndex == 2 ? "Start cooking" : "Next Step",
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 10),
+              const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+            ],
           ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildIndicator(int index) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.only(right: 8),
-      height: 10, width: _currentPage == index ? 24 : 10,
-      decoration: BoxDecoration(color: _currentPage == index ? Colors.white : Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(5)),
     );
   }
 }

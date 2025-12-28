@@ -29,15 +29,20 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+
     sdk: flutter
   provider: ^6.1.1
   http: ^1.1.0
   sqflite: ^2.3.0
   path: ^1.8.3
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.3.2
   animations: ^2.0.11
   url_launcher: ^6.2.0
   share_plus: ^10.1.0
+  sensors_plus: ^6.1.1       # For "Shake to Discover"
+  lottie: ^3.1.2             # For Animated Empty States
+  cached_network_image: ^3.4.1
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -64,6 +69,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/animations/empty_search.json
+    - assets/animations/empty_cook.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

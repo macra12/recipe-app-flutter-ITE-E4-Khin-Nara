@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/meal_model.dart';
 import '../providers/favorite_provider.dart';
 import '../providers/meal_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/meal_card.dart';
 import '../screens/meal_detail_screen.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:math';
+import 'dart:async';
+import 'dart:io'; // Required for Platform check
+import 'package:flutter/foundation.dart'; // Required for kIsWeb
 
 class HomeScreen extends StatefulWidget {
+
   const HomeScreen({super.key});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
+
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  StreamSubscription<AccelerometerEvent>? _shakeSubscription;
+  DateTime? _lastShake;
+  Meal? _featuredMeal; // Persists the meal to prevent flickering
   // Mapping for Category Emojis
   final Map<String, String> _categoryIcons = {
     "Beef": "🥩", "Chicken": "🍗", "Dessert": "🍰",
@@ -27,65 +38,96 @@ class _HomeScreenState extends State<HomeScreen> {
     "French": "🇫🇷", "Indian": "🇮🇳", "Canadian": "🇨🇦", "Chinese": "🇨🇳"
   };
 
+
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      if (mounted) context.read<MealProvider>().loadMeals();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final mealProvider = context.read<MealProvider>();
+        // Only load if the list is empty to prevent redundant calls seen in logs
+        if (mealProvider.meals.isEmpty) {
+          mealProvider.loadMeals().then((_) => _pickRandomMeal());
+        } else if (_featuredMeal == null) {
+          _pickRandomMeal();
+        }
+      }
+      _startShakeDetection();
     });
   }
+
+  void _pickRandomMeal() {
+    final meals = context.read<MealProvider>().meals;
+    if (meals.isNotEmpty && mounted) {
+      setState(() {
+        _featuredMeal = meals[Random().nextInt(meals.length)];
+      });
+    }
+  }
+
+  void _startShakeDetection() {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      _shakeSubscription = accelerometerEventStream().listen((event) {
+        final now = DateTime.now();
+        // 1-second cooldown to prevent the multiple updates seen in your logs
+        if (_lastShake == null || now.difference(_lastShake!) > const Duration(seconds: 1)) {
+          if (event.x.abs() > 15 || event.y.abs() > 15) {
+            _lastShake = now;
+            _pickRandomMeal();
+            HapticFeedback.mediumImpact();
+          }
+        }
+      });
+    }
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     final mealProvider = context.watch<MealProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Realistic soft background
-      // EXTRA MILE: Added RefreshIndicator so users can pull down to refresh recipes
+      backgroundColor: Colors.grey[50],
       body: RefreshIndicator(
-        onRefresh: () => context.read<MealProvider>().loadMeals(),
-        color: Colors.orange,
-        child: mealProvider.isLoading
+        onRefresh: () => mealProvider.loadMeals().then((_) => _pickRandomMeal()),
+        child: mealProvider.isLoading && mealProvider.meals.isEmpty
             ? const Center(child: CircularProgressIndicator(color: Colors.orange))
             : CustomScrollView(
           slivers: [
-            _buildFancyHeader(), // Professional pinning header
+            _buildFancyHeader(),
             SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. SURPRISE PICK AT THE VERY TOP (High visual impact)
-                  if (mealProvider.meals.isNotEmpty)
-                    _buildFeaturedBanner(context, mealProvider.meals[Random().nextInt(mealProvider.meals.length)]),
+                  // FIXED: Clean syntax for the Surprise Pick banner
+                  // FIXED BANNER LOGIC
+                  if (_featuredMeal != null)
+                    _buildFeaturedBanner(context, _featuredMeal!),
+                  if (_featuredMeal == null && mealProvider.meals.isNotEmpty)
+                    _buildFeaturedBanner(context, mealProvider.meals[0]),
 
-                  // 2. SMART RECOMMENDATIONS UNDER BANNER (Personalized discovery)
                   _buildSmartRecommendationSection(mealProvider),
-
                   _buildSectionHeader("Explore Categories"),
-                  _buildHorizontalList(
-                      context,
-                      ["Beef", "Chicken", "Dessert", "Pasta", "Seafood", "Vegan"],
-                      isCategory: true
-                  ),
-
+                  _buildHorizontalList(context, ["Beef", "Chicken", "Dessert", "Pasta", "Seafood", "Vegan"], isCategory: true),
                   _buildSectionHeader("Popular Areas"),
-                  _buildHorizontalList(
-                      context,
-                      ["Italian", "British", "American", "French", "Indian", "Canadian"],
-                      isCategory: false
-                  ),
-
+                  _buildHorizontalList(context, ["Italian", "British", "American", "French", "Indian", "Canadian"], isCategory: false),
                   _buildSectionHeader("All Recipes"),
                 ],
               ),
             ),
-            // 3. MAIN GRID (Organized and even layout)
             _buildMainGrid(mealProvider),
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         ),
       ),
     );
+  }
+  @override
+  void dispose() {
+    _shakeSubscription?.cancel();
+    super.dispose();
   }
 
   Widget _buildFancyHeader() {
