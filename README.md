@@ -26,7 +26,7 @@ This project exceeds the base requirements with professional-grade implementatio
 
 ### 1. Onboarding Experience
 * A cinematic three-stage introduction using full-screen cached images and smooth page transitions.
-!
+
 ### 2. Home Screen 
 * **Surprise Pick Banner**: High-impact banner displaying random food suggestions.
 * **Category & Area Chips**: Interactive cards with food emojis and country flags for quick navigation.
@@ -58,7 +58,7 @@ This project exceeds the base requirements with professional-grade implementatio
 1.  **Clone the repository**:
    
     ```bash
-    git clone [https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git](https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git) [cite: 60]
+    git clone [https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git](https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git)
     ```
    
 2.  **Install dependencies**:
