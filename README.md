@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🍳 Recipe Finder App
 
 **Project by: Khin Nara (ITE-E4)**
@@ -65,3 +66,26 @@ This project exceeds the base requirements with the following specialized implem
    
    ```bash
    flutter run
+=======
+<<<<<<< HEAD
+# recipe-app-flutter-ITE-E4-Khin-Nara
+A high-quality Flutter recipe application featuring a smart discovery-based recommendation engine, interactive ingredient checklists, and seamless cross-screen filtering. Built using Provider for state management and SQLite for local data persistence.
+=======
+# recipefinderapp
+
+A new Flutter project.
+
+## Getting Started
+
+This project is a starting point for a Flutter application.
+
+A few resources to get you started if this is your first Flutter project:
+
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+>>>>>>> aff5b8a (Initial commit: Professional Recipe App with Smart Recommendations)
+>>>>>>> 4c0d3af (Initial commit: Professional Recipe App with Smart Recommendations)
