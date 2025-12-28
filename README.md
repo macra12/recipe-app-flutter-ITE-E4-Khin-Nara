@@ -54,11 +54,14 @@ This project exceeds the base requirements with the following specialized implem
 ## ⚙️ Setup & Installation
 
 1. **Clone the repository**:
+   
    ```bash
    git clone https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git
 2. **Install dependencies**:
+   
    ```bash
    flutter pub get
 3. **Run the application**:
+   
    ```bash
    flutter run
