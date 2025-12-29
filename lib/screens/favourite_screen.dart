@@ -28,6 +28,7 @@ class _FavouriteScreenState extends ConsumerState<FavouriteScreen> {
   Widget build(BuildContext context) {
     final favorites = ref.watch(favoriteProvider);
 
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
       body: CustomScrollView(
@@ -231,19 +232,39 @@ class _FavouriteScreenState extends ConsumerState<FavouriteScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Lottie.asset('assets/animations/empty_cook.json', height: 240),
-            const SizedBox(height: 20),
-            const Text(
-              "Your cookbook is empty",
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+            // 1. The Story-telling Animation
+            Lottie.asset(
+              'assets/animations/empty_cook.json', // Ensure this filename matches your assets folder
+              height: 240,
+              repeat: true,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 20),
+
+            // 2. The Emotional Heading
             const Text(
-              "Start exploring and save your favorite recipes to see them here!",
+              "Your Kitchen is Quiet",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 3. The Contextual Subtext
+            const Text(
+              "Discover recipes that make your heart (and stomach) happy. Your saved favorites will appear here!",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 16),
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 16,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 40),
+
+            // 4. The Interactive Action Button
             ElevatedButton(
               onPressed: () => ref.read(navigationProvider.notifier).setIndex(0),
               style: ElevatedButton.styleFrom(
@@ -254,7 +275,10 @@ class _FavouriteScreenState extends ConsumerState<FavouriteScreen> {
                 elevation: 8,
                 shadowColor: const Color(0xFFFF9800).withValues(alpha: 0.4),
               ),
-              child: const Text("Go Explore", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+              child: const Text(
+                "Start Discovering",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
             ),
           ],
         ),

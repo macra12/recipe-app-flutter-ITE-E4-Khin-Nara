@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/meal_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/meal_card.dart';
@@ -18,6 +19,48 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
   String searchQuery = "";
+  List<String> _searchHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSearchHistory();
+  }
+
+
+  Future<void> _loadSearchHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _searchHistory = prefs.getStringList('explore_history') ?? [];
+    });
+  }
+
+  Future<void> _addToHistory(String query) async {
+    if (query.trim().isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _searchHistory.remove(query);
+      _searchHistory.insert(0, query);
+      if (_searchHistory.length > 5) _searchHistory.removeLast();
+    });
+    await prefs.setStringList('explore_history', _searchHistory);
+  }
+  Future<void> _removeFromHistory(String query) async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _searchHistory.remove(query);
+    });
+    await prefs.setStringList('explore_history', _searchHistory);
+  }
+
+  // Wipes the entire search history
+  Future<void> _clearHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _searchHistory.clear();
+    });
+    await prefs.remove('explore_history');
+  }
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -88,12 +131,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     final mealState = ref.watch(mealProvider);
     final navState = ref.watch(navigationProvider);
 
+    // FIXED LOGIC: Now checks for Search, Category AND Area
     final filteredMeals = mealState.meals.where((m) {
+      // 1. Search Match
       final matchesSearch = m.name.toLowerCase().contains(searchQuery.toLowerCase());
-      final matchesCategory = navState.categoryFilter == "All" || m.category == navState.categoryFilter;
-      return matchesSearch && matchesCategory;
-    }).toList();
 
+      // 2. Category Match
+      final matchesCategory = navState.categoryFilter == "All" || m.category == navState.categoryFilter;
+
+      // 3. NEW: Area Match (This was missing!)
+      final matchesArea = navState.areaFilter == "All" || m.area == navState.areaFilter;
+
+      return matchesSearch && matchesCategory && matchesArea;
+    }).toList();
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
       body: SafeArea(
@@ -112,6 +162,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         style: TextStyle(color: Colors.orange.shade300, fontSize: 14, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 25),
                     _buildAnimatedSearchBar(navState),
+
+                    // NEW: Search History Chips
+                    if (_searchHistory.isNotEmpty && searchQuery.isEmpty) _buildHistoryRow(),
                   ],
                 ),
               ),
@@ -172,6 +225,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
+              onSubmitted: (value) => _addToHistory(value), // Save on Enter
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Search recipes...",
@@ -197,6 +251,63 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ),
         ),
       ],
+    );
+  }
+  Widget _buildHistoryRow() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Recent Searches",
+                style: TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              // "Clear All" stays for convenience
+              GestureDetector(
+                onTap: _clearHistory,
+                child: const Text(
+                  "Clear All",
+                  style: TextStyle(color: Color(0xFFFF9800), fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _searchHistory.length,
+              itemBuilder: (context, index) {
+                final query = _searchHistory[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InputChip(
+                    label: Text(query, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+
+                    // NEW: "Delete one by one" feature using dedicated icon
+                    deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white54),
+                    onDeleted: () => _removeFromHistory(query),
+
+                    // Tapping the chip still triggers the search
+                    onPressed: () {
+                      _searchController.text = query;
+                      _onSearchChanged(query);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 

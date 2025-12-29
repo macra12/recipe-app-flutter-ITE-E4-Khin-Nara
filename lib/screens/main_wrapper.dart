@@ -5,6 +5,7 @@ import '../providers/navigation_provider.dart';
 import 'home_screen.dart';
 import 'explore_screen.dart';
 import 'favourite_screen.dart';
+import 'dart:ui';
 
 class MainWrapper extends ConsumerWidget {
   const MainWrapper({super.key});
@@ -37,10 +38,11 @@ class MainWrapper extends ConsumerWidget {
       height: 90,
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 25),
       decoration: BoxDecoration(
-
-        color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+        // 1. Set a semi-transparent background color
+        color: const Color(0xFF1E1E1E).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
+        // 2. Add a very subtle light border to enhance the "glass" edge
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.4),
@@ -49,13 +51,21 @@ class MainWrapper extends ConsumerWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildCoolNavItem(ref, Icons.home_rounded, "Home", 0, currentIndex),
-          _buildCoolNavItem(ref, Icons.explore_rounded, "Explore", 1, currentIndex),
-          _buildCoolNavItem(ref, Icons.favorite_rounded, "Favourite", 2, currentIndex),
-        ],
+      // 3. Use ClipRRect to ensure the blur doesn't bleed outside the rounded corners
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        // 4. The BackdropFilter applies the blur to whatever is BEHIND this bar
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildCoolNavItem(ref, Icons.home_rounded, "Home", 0, currentIndex),
+              _buildCoolNavItem(ref, Icons.explore_rounded, "Explore", 1, currentIndex),
+              _buildCoolNavItem(ref, Icons.favorite_rounded, "Favourite", 2, currentIndex),
+            ],
+          ),
+        ),
       ),
     );
   }

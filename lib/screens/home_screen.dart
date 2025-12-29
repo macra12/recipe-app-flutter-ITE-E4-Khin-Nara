@@ -24,6 +24,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   StreamSubscription<AccelerometerEvent>? _shakeSubscription;
   DateTime? _lastShake;
   Meal? _featuredMeal;
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good Morning, Chef! ☀️";
+    if (hour < 17) return "Good Afternoon, Chef! 🌤️";
+    return "Good Evening, Chef! 🌙";
+  }
 
   final Map<String, String> _categoryIcons = {
     "Beef": "🥩", "Chicken": "🍗", "Dessert": "🍰",
@@ -192,8 +198,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (!isCollapsed)
-                      Text("Hello, Chef!",
-                          style: TextStyle(color: Colors.orange.shade300, fontSize: 10, letterSpacing: 1.2)),
+                      Text(
+                        _getGreeting(),
+                        style: TextStyle(
+                            color: Colors.orange.shade300,
+                            fontSize: 10,
+                            letterSpacing: 1.2
+                        ),
+                      ),
                     const Text("Find your taste",
                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
                   ],

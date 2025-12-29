@@ -1,6 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/meal_model.dart';
 import '../providers/favorite_provider.dart';
@@ -17,12 +19,34 @@ class MealDetailScreen extends ConsumerStatefulWidget {
 
 class _MealDetailScreenState extends ConsumerState<MealDetailScreen> {
   bool showIngredients = true;
+  final Set<int> _checkedIngredients = {};
 
   List<String> get instructionSteps {
     return widget.meal.instructions
         .split(RegExp(r'\r\n|\n|\. '))
         .where((s) => s.trim().isNotEmpty)
         .toList();
+  }
+
+  // Helper to add personality with emojis for ingredients
+  String _getIngredientEmoji(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('chicken')) return '🍗';
+    if (lower.contains('beef') || lower.contains('steak')) return '🥩';
+    if (lower.contains('pork') || lower.contains('bacon')) return '🥓';
+    if (lower.contains('egg')) return '🥚';
+    if (lower.contains('milk') || lower.contains('cream')) return '🥛';
+    if (lower.contains('cheese')) return '🧀';
+    if (lower.contains('sugar') || lower.contains('salt')) return '🧂';
+    if (lower.contains('flour')) return '🌾';
+    if (lower.contains('oil') || lower.contains('butter')) return '🧈';
+    if (lower.contains('water')) return '💧';
+    if (lower.contains('onion') || lower.contains('garlic')) return '🧄';
+    if (lower.contains('tomato')) return '🍅';
+    if (lower.contains('pasta') || lower.contains('spaghetti')) return '🍝';
+    if (lower.contains('rice')) return '🍚';
+    if (lower.contains('bread')) return '🍞';
+    return '🌿'; // Default culinary emoji
   }
 
   Future<void> _launchUrl(String? urlString) async {
@@ -33,175 +57,196 @@ class _MealDetailScreenState extends ConsumerState<MealDetailScreen> {
     }
   }
 
-  void _showActionSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSheetItem(Icons.share, "Share Recipe", () {
-              Share.share("Check out this ${widget.meal.name} recipe!");
-              Navigator.pop(context);
-            }),
-            _buildSheetItem(Icons.link, "Copy Recipe Link", () {
-              Clipboard.setData(ClipboardData(text: widget.meal.source ?? "app.recipe.co/${widget.meal.id}"));
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Link copied!")));
-              Navigator.pop(context);
-            }),
-            _buildSheetItem(
-                ref.watch(favoriteProvider.notifier).isFavorite(widget.meal.id) ? Icons.bookmark : Icons.bookmark_border,
-                "Save to Favorites",
-                    () {
-                  ref.read(favoriteProvider.notifier).toggleFavorite(widget.meal);
-                  Navigator.pop(context);
-                }
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSheetItem(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFFFF9800)),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
-      onTap: onTap,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 400,
-            pinned: true,
-            backgroundColor: const Color(0xFF0F0F0F),
-            leading: IconButton(
-              icon: const CircleAvatar(backgroundColor: Colors.black26, child: Icon(Icons.arrow_back, color: Colors.white)),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: [
-              IconButton(
-                icon: const CircleAvatar(backgroundColor: Colors.black26, child: Icon(Icons.more_horiz, color: Colors.white)),
-                onPressed: () => _showActionSheet(context),
-              ),
-              const SizedBox(width: 10),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Hero(
-                tag: widget.heroTag,
-                child: Image.network(widget.meal.imageUrl, fit: BoxFit.cover),
-              ),
-            ),
-          ),
-
-          SliverToBoxAdapter(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(25),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-              ),
-              child: Column(
-                // Ensure all elements align to the left
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.meal.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _buildMiniBadge(widget.meal.area, Colors.blue),
-                      const SizedBox(width: 8),
-                      _buildMiniBadge(widget.meal.category, const Color(0xFFFF9800)),
-                    ],
+      body: Stack(
+        children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _buildHeaderImage(),
+              SliverToBoxAdapter(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0F0F0F),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(50)),
                   ),
-
-                  const SizedBox(height: 25),
-
-                  Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (widget.meal.youtube != null && widget.meal.youtube!.isNotEmpty)
-                        Expanded(
-                          child: _buildActionButton(
-                            icon: Icons.play_circle_fill,
-                            label: "Watch Video",
-                            color: const Color(0xFFFF0000),
-                            onTap: () => _launchUrl(widget.meal.youtube),
-                          ),
-                        ),
-                      if (widget.meal.youtube != null && widget.meal.youtube!.isNotEmpty) const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildActionButton(
-                          icon: Icons.language,
-                          label: "View Source",
-                          color: const Color(0xFF129575),
-                          onTap: () => _launchUrl(widget.meal.source),
-                        ),
+                      // TITLE & TAGS
+                      _buildMainTitleSection(),
+                      const SizedBox(height: 35),
+
+                      _buildActionButtons(),
+                      const SizedBox(height: 45),
+
+                      _buildSectionToggle(),
+                      const SizedBox(height: 40),
+
+                      AnimationLimiter(
+                        key: ValueKey(showIngredients),
+                        child: showIngredients ? _buildIngredientsList() : _buildStepFlow(),
                       ),
+                      const SizedBox(height: 120),
                     ],
                   ),
-
-                  const SizedBox(height: 35),
-
-                  Container(
-                    height: 55,
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F0F0F),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildToggleButton("Ingredients", showIngredients),
-                        _buildToggleButton("Instructions", !showIngredients),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  showIngredients ? _buildIngredientsList() : _buildStepFlow(),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
+          _buildTopNavigationBar(),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildHeaderImage() {
+    return SliverAppBar(
+      expandedHeight: 460,
+      pinned: true,
+      stretch: true,
+      backgroundColor: const Color(0xFF0F0F0F),
+      leading: const SizedBox.shrink(),
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground],
+        background: Stack(
+          fit: StackFit.expand,
           children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+            Hero(
+              tag: widget.heroTag,
+              child: Image.network(widget.meal.imageUrl, fit: BoxFit.cover),
+            ),
+            // Cinematic Gradient Overlay
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.4, 0.8, 1.0],
+                  colors: [
+                    Colors.black26,
+                    Colors.transparent,
+                    Color(0xFF0F0F0F)
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildToggleButton(String title, bool active) {
+  Widget _buildMainTitleSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.meal.name,
+          style: const TextStyle(
+            fontSize: 38,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -1.5,
+            height: 1.0,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            _buildBadge(widget.meal.area.toUpperCase(), const Color(0xFFFF9800)),
+            const SizedBox(width: 10),
+            _buildBadge(widget.meal.category.toUpperCase(), Colors.white24),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+            color: color == Colors.white24 ? Colors.white60 : color,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildRealisticButton(
+            icon: Icons.play_arrow_rounded,
+            label: "Video Guide",
+            color: const Color(0xFF421C1C),
+            textColor: Colors.redAccent,
+            onTap: () => _launchUrl(widget.meal.youtube),
+          ),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          child: _buildRealisticButton(
+            icon: Icons.chrome_reader_mode_outlined,
+            label: "Full Story",
+            color: const Color(0xFF1B3A32),
+            textColor: const Color(0xFF00C897),
+            onTap: () => _launchUrl(widget.meal.source),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRealisticButton({required IconData icon, required String label, required Color color, required Color textColor, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(22)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor, size: 24),
+            const SizedBox(width: 10),
+            Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.w900, fontSize: 14)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionToggle() {
+    return Container(
+      height: 65,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(color: const Color(0xFF1E1E1E), borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        children: [
+          _buildToggleItem("Ingredients", showIngredients),
+          _buildToggleItem("Instructions", !showIngredients),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleItem(String title, bool active) {
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => showIngredients = (title == "Ingredients")),
@@ -209,76 +254,189 @@ class _MealDetailScreenState extends ConsumerState<MealDetailScreen> {
           duration: const Duration(milliseconds: 300),
           decoration: BoxDecoration(
             color: active ? const Color(0xFFFF9800) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: active ? [BoxShadow(color: Colors.orange.withValues(alpha: 0.2), blurRadius: 10)] : [],
           ),
           alignment: Alignment.center,
-          child: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: active ? Colors.black : Colors.white60)),
+          child: Text(
+              title,
+              style: TextStyle(fontWeight: FontWeight.w900, color: active ? Colors.black : Colors.white38)
+          ),
         ),
       ),
     );
   }
 
+  // BEAUTIFUL INGREDIENTS LIST WITH EMOJIS
   Widget _buildIngredientsList() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: widget.meal.ingredients.map((ing) {
-        final parts = ing.split(': ');
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 15),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF262626),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.check_circle_outline, size: 20, color: Color(0xFFFF9800)),
-              const SizedBox(width: 15),
-              Expanded(child: Text(parts[0], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white))),
-              Text(parts.length > 1 ? parts[1] : "", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
-            ],
+      children: widget.meal.ingredients.asMap().entries.map((entry) {
+        final index = entry.key;
+        final parts = entry.value.split(': ');
+        final isChecked = _checkedIngredients.contains(index);
+        final name = parts[0];
+        final measure = parts.length > 1 ? parts[1] : "";
+
+        return AnimationConfiguration.staggeredList(
+          position: index,
+          duration: const Duration(milliseconds: 400),
+          child: SlideAnimation(
+            verticalOffset: 30.0,
+            child: FadeInAnimation(
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => isChecked ? _checkedIngredients.remove(index) : _checkedIngredients.add(index));
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+                  decoration: BoxDecoration(
+                    color: isChecked ? Colors.transparent : const Color(0xFF1E1E1E),
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: isChecked ? Colors.white12 : Colors.transparent),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(_getIngredientEmoji(name), style: const TextStyle(fontSize: 24)),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Text(name,
+                            style: TextStyle(
+                              color: isChecked ? Colors.white24 : Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              decoration: isChecked ? TextDecoration.lineThrough : null,
+                            )),
+                      ),
+                      Text(measure,
+                          style: TextStyle(color: isChecked ? Colors.white12 : Colors.orange.shade200, fontWeight: FontWeight.w900, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         );
       }).toList(),
     );
   }
 
+  // TIMELINE STEP FLOW: Easy to read and aligned
   Widget _buildStepFlow() {
     final steps = instructionSteps;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(steps.length, (index) {
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: const Color(0xFF262626),
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Step ${index + 1}", style: const TextStyle(color: Color(0xFFFF9800), fontWeight: FontWeight.w900, fontSize: 14)),
-              const SizedBox(height: 10),
-              Text(steps[index], style: const TextStyle(fontSize: 15, height: 1.6, color: Colors.white70)),
-            ],
+        return AnimationConfiguration.staggeredList(
+          position: index,
+          duration: const Duration(milliseconds: 500),
+          child: SlideAnimation(
+            horizontalOffset: 50.0,
+            child: FadeInAnimation(
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Timeline Logic
+                    Column(
+                      children: [
+                        Container(
+                          width: 34, height: 34,
+                          decoration: const BoxDecoration(color: Color(0xFFFF9800), shape: BoxShape.circle),
+                          alignment: Alignment.center,
+                          child: Text("${index + 1}", style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
+                        ),
+                        if (index != steps.length - 1)
+                          Expanded(child: Container(width: 2, color: Colors.white12, margin: const EdgeInsets.symmetric(vertical: 8))),
+                      ],
+                    ),
+                    const SizedBox(width: 22),
+                    // Content
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 40),
+                        child: Text(
+                          steps[index],
+                          style: const TextStyle(fontSize: 17, height: 1.7, color: Colors.white, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       }),
     );
   }
 
-  Widget _buildMiniBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
+  Widget _buildTopNavigationBar() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildBlurIcon(Icons.arrow_back_ios_new_rounded, () => Navigator.pop(context)),
+            _buildBlurIcon(Icons.more_horiz_rounded, () => _showActionSheet(context)),
+          ],
+        ),
       ),
-      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+    );
+  }
+
+  Widget _buildBlurIcon(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            color: Colors.black26,
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showActionSheet(BuildContext context) {
+    final isFav = ref.watch(favoriteProvider.notifier).isFavorite(widget.meal.id);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(35),
+          decoration: const BoxDecoration(color: Color(0xFF1E1E1E), borderRadius: BorderRadius.vertical(top: Radius.circular(45))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(isFav ? Icons.favorite_rounded : Icons.favorite_outline_rounded, color: Colors.redAccent, size: 28),
+                title: Text(isFav ? "Remove from Cookbook" : "Add to Cookbook", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                onTap: () {
+                  ref.read(favoriteProvider.notifier).toggleFavorite(widget.meal);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                leading: const Icon(Icons.share_rounded, color: Colors.orange, size: 28),
+                title: const Text("Share with Friends", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                onTap: () {
+                  Share.share("You have to try this ${widget.meal.name} recipe!");
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
