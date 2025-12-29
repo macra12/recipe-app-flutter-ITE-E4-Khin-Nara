@@ -1,56 +1,60 @@
-# Recipe Finder App
+# Mobile Development 2 
+
 **Student Name:** Khin Nara  
 **Class:** ITE-E4  
-**Lab Assignment:** Lab 3 - Recipe Finder App
+**Lecturer:** Hang Sopheak  
+**Lab Assignment:** Lab 3 - Recipe Finder App (Flutter)
 
 ---
 
 ## 📖 Project Overview
-A high-performance Flutter application built for an immersive culinary experience. This app consumes a simplified JSON SERVER API to allow users to browse, search, and save global recipes. It features a cinematic UI, offline persistence, and native hardware integration.
+A high-performance Flutter application built for an immersive culinary experience. This app consumes a simplified JSON SERVER API to allow users to browse, search, and save global recipes. It features a cinematic **Deep Charcoal & Amber** UI, high-end animations, and native hardware integration.
+
+
 
 ---
 
 ## 🚀 "Extra Mile" & Creativity
 This project exceeds the base requirements with professional-grade implementations:
 
-* **Shake-to-Discover Sensor**: Integrated `sensors_plus` to detect physical device movement. Users can shake their phone on the Home screen to trigger a "Surprise Pick" meal update with haptic feedback.
-* **Persistent Image Storage (Disk Caching)**: Implemented `cached_network_image` to ensure that once a recipe image is downloaded, it is stored locally.This saves user data and enables a full offline experience.
-* **Edge-to-Edge Immersive UI**: Utilized `SystemUiMode.edgeToEdge` to allow background images to flow behind the status bar and home indicator for a modern, cinematic look.
-* **Hero Suffix Animation System**: Developed a custom tag system (`-rec`, `-grid`, `-banner`) to prevent "Duplicate Hero Tag" crashes, enabling smooth motion transitions across multiple UI sections.
-* **Smart Recommendation Engine**: Custom logic in `FavoriteProvider` analyzes saved recipes to calculate the user's "Top Category" and suggest new meals they haven't favorited yet.
-* **Interactive Ingredient Checklist**: Transformed the static ingredient list into a functional tool where users can "check off" items as they cook to track their progress.
+* **Shake-to-Discover Sensor**: Integrated `sensors_plus` to detect physical movement. Users can shake their phone on the Home screen to trigger a "Surprise Pick" meal update with haptic feedback.
+* **Haptic Navigation System**: Utilized `HapticFeedback` to provide tactile vibrations when navigating the floating bottom bar.
+* **Staggered Animation Suite**: Implemented `flutter_staggered_animations` to ensure meal cards and list items "flow" onto the screen smoothly rather than appearing static.
+* **Smart Recommendation Engine**: Custom logic in `FavoriteProvider` analyzes saved recipes to calculate the user's "Top Category" and suggest new meals based on their taste.
+* **YouTube & Source Integration**: Integrated `url_launcher` to allow users to watch video tutorials or view original blog sources directly from the app.
+* **Hero Suffix Animation System**: Developed a custom tag system (`-grid`, `-explore`, `-banner`) to prevent "Duplicate Hero Tag" crashes, enabling cinematic motion transitions.
+* **Premium Shimmer Loading**: Replaced standard spinners with skeleton "Shimmer" effects to provide a better perceived loading speed.
 
 ---
 
-## 🌟 Core Features (Lab Requirements)
+## 🌟 Core Features
 
-### 1. Onboarding Experience
+### 1. Immersive Onboarding
 * A cinematic three-stage introduction using full-screen cached images and smooth page transitions.
+* Uses a custom high-contrast gradient overlay to ensure text readability over any background.
 
-### 2. Home Screen 
-* **Surprise Pick Banner**: High-impact banner displaying random food suggestions.
-* **Category & Area Chips**: Interactive cards with food emojis and country flags for quick navigation.
-* **Bottom Navigation**: Seamless switching between Home, Explore, and Favourite sections.
+### 2. Intelligent Home Screen
+* **Dynamic Banner**: Displays random or shaken suggestions.
+* **Categorized Exploration**: Quick-access chips with emojis for global cuisines.
+* **Personalized Suggestions**: A horizontal list of meals suggested by the Smart Recommendation Engine.
 
-### 3. Explore & Search
-* **Filter Chips**: Real-time filtering by categories.
-* **Debounced Search**: A 300ms debounce timer ensures lag-free filtering as the user types.
-* **Global Sync**: Selecting a category on Home automatically updates the Explore filters.
+### 3. Advanced Explore & Search
+* **Debounced Search**: A 300ms debounce timer prevents unnecessary API processing and UI lag as the user types.
+* **Advanced Filter Modal**: A professional "Filter Search" bottom sheet that matches the application's dark theme.
 
-### 4. Meal Details & Persistence 
-* **Rich Details**: Displays ingredients, instructions, and multimedia links (YouTube/Source).
-* **Offline Favorites**: Integrated with `sqflite` (SQLite) to ensure saved recipes are accessible without internet.
-* **Native Sharing**: Integrated `share_plus` to allow users to share recipes instantly.
+### 4. Meal Details & Offline Cookbook
+* **Step-by-Step Flow**: Instructions are split into numbered cards for easy reading while cooking.
+* **Offline Favorites**: Powered by `sqflite` (SQLite), saved recipes remain available even without an internet connection.
+* **Native Sharing**: Integrated `share_plus` to allow instant recipe sharing with friends and family.
 
 ---
 
-## 🛠️ Technical Implementation
+## 🛠️ Technical Stack
 * **Language**: Dart
-* **UI Framework**: Flutter (Material 3) 
-* **State Management**: `Provider` (Multi-provider architecture) 
-* **Asynchronous Logic**: Comprehensive use of `async/await` for API and Database operations.
-* **API Integration**: Consumes REST API with unique `X-DB-NAME` GUID headers.
-* **Local Storage**: `sqflite` for favorites and `SharedPreferences` for full-database JSON caching.
+* **UI Framework**: Flutter (Material 3)
+* **State Management**: `Riverpod` (StateNotifierProvider architecture).
+* **Persistence**: `sqflite` (Local DB) and `SharedPreferences` (JSON Caching).
+* **API Integration**: REST API with custom `X-DB-NAME` security headers.
 
 ---
 
@@ -58,7 +62,7 @@ This project exceeds the base requirements with professional-grade implementatio
 1.  **Clone the repository**:
    
     ```bash
-    git clone https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git
+    git clone [https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git](https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git)
     ```
    
 2.  **Install dependencies**:
@@ -72,3 +76,11 @@ This project exceeds the base requirements with professional-grade implementatio
     ```bash
     flutter run
     ```
+
+---
+
+## 📁 Project Structure Highlights
+* `lib/providers/`: Global state management using Riverpod.
+* `lib/services/`: API communication and SQLite database helpers.
+* `lib/widgets/`: Reusable UI components like the premium `MealCard`.
+* `lib/screens/`: Feature-specific screens (Onboarding, Home, Explore, Saved).
