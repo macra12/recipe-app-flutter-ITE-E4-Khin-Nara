@@ -10,8 +10,6 @@
 ## 📖 Project Overview
 A high-performance Flutter application built for an immersive culinary experience. This app consumes a simplified JSON SERVER API to allow users to browse, search, and save global recipes. It features a cinematic **Deep Charcoal & Amber** UI, high-end animations, and native hardware integration.
 
-
-
 ---
 
 ## 🚀 "Extra Mile" & Creativity
@@ -34,7 +32,7 @@ This project exceeds the base requirements with professional-grade implementatio
 * Uses a custom high-contrast gradient overlay to ensure text readability over any background.
 
 ### 2. Intelligent Home Screen
-* **Dynamic Banner**: Displays random or shaken suggestions.
+* **Dynamic Banner**: Displays random or shaken suggestions using a high-impact visual style.
 * **Categorized Exploration**: Quick-access chips with emojis for global cuisines.
 * **Personalized Suggestions**: A horizontal list of meals suggested by the Smart Recommendation Engine.
 
@@ -46,6 +44,13 @@ This project exceeds the base requirements with professional-grade implementatio
 * **Step-by-Step Flow**: Instructions are split into numbered cards for easy reading while cooking.
 * **Offline Favorites**: Powered by `sqflite` (SQLite), saved recipes remain available even without an internet connection.
 * **Native Sharing**: Integrated `share_plus` to allow instant recipe sharing with friends and family.
+
+### 5. Personalized Favourite Screen
+* **Animated Recipe Collection**: Utilizes a staggered list animation suite to slide and fade saved recipes into view, providing a premium and fluid user experience.
+* **Swipe-to-Remove Gestures**: Integrated `Dismissible` widgets with a custom red-accent delete background, allowing users to effortlessly unsave recipes with a single horizontal swipe.
+* **Intelligent Empty State**: Features an interactive Lottie animation ("empty_cook.json") and a clear call-to-action button that guides users back to discovery when their cookbook is empty.
+* **Offline Recipe Access**: Leverages `sqflite` (SQLite) to ensure that your personal cookbook is always accessible, allowing you to view saved ingredients and names without an internet connection.
+* **Visual Hierarchy & Hero Motion**: Each saved recipe card features a vibrant category badge and shares a synchronized Hero tag for seamless motion transitions between the list and the details view.
 
 ---
 
@@ -60,19 +65,19 @@ This project exceeds the base requirements with professional-grade implementatio
 
 ## ⚙️ Setup & Installation
 1.  **Clone the repository**:
-   
+    
     ```bash
     git clone [https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git](https://github.com/macra12/recipe-app-flutter-ITE-E4-Khin-Nara.git)
     ```
-   
+    
 2.  **Install dependencies**:
-   
+    
     ```bash
     flutter pub get
     ```
     
 3.  **Run the application**:
-   
+    
     ```bash
     flutter run
     ```
