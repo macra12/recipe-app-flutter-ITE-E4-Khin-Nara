@@ -36,16 +36,23 @@ class FavoriteNotifier extends StateNotifier<List<Map<String, dynamic>>> {
     state = favorites; // Directly update the state to trigger UI refresh
   }
 
-  Future<void> toggleFavorite(Meal meal) async { // Use Meal model for type safety
-    final isExist = state.any((element) => element['id'] == meal.id);
+  Future<void> toggleFavorite(dynamic mealData) async {
+    // Extract ID and other fields regardless of whether input is a Meal or a Map
+    final String id = (mealData is Meal) ? mealData.id : mealData['id'];
+
+    final isExist = state.any((element) => element['id'] == id);
 
     if (isExist) {
-      await DatabaseHelper.instance.deleteFavorite(meal.id);
+      // Requirement: deleteFavorite locally
+      await DatabaseHelper.instance.deleteFavorite(id);
     } else {
-      // Requirements: Save favorites locally
-      await DatabaseHelper.instance.insertFavorite(meal);
+      // If it's a Map (from the Fav screen), we convert it or handle it
+      // If it's a Meal (from Home/Detail), we pass it directly
+      if (mealData is Meal) {
+        await DatabaseHelper.instance.insertFavorite(mealData);
+      }
     }
-    // Requirement: Refresh state to update UI reactively [cite: 103]
+    // Refresh the local state [cite: 103]
     await loadFavorites();
   }
 

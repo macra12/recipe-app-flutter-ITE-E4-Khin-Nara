@@ -138,8 +138,10 @@ class _FavouriteScreenState extends ConsumerState<FavouriteScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.favorite, color: Colors.red),
-                // Call the toggle logic via the notifier
-                onPressed: () => ref.read(favoriteProvider.notifier).toggleFavorite(mealData),
+                onPressed: () {
+                  // This now works because the notifier handles the dynamic 'mealData' Map
+                  ref.read(favoriteProvider.notifier).toggleFavorite(mealData);
+                },
               ),
               const SizedBox(width: 8),
             ],
