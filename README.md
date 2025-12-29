@@ -7,6 +7,14 @@
 
 ---
 
+## Demo Video
+
+Here is a 2-minute video walkthrough demonstrating all the required features of the app.
+
+**https://youtu.be/X8BCFBhL7YQ**
+
+---
+
 ## 📖 Project Overview
 A high-performance Flutter application built for an immersive culinary experience. This app consumes a simplified JSON SERVER API to allow users to browse, search, and save global recipes. It features a cinematic **Deep Charcoal & Amber** UI, high-end animations, and native hardware integration.
 
