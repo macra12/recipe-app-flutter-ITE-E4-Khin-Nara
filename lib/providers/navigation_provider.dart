@@ -1,11 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// 1. Define the global provider variable (This fixes your error)
 final navigationProvider = StateNotifierProvider<NavigationNotifier, NavigationState>((ref) {
   return NavigationNotifier();
 });
 
-// 2. Define a State class to hold your navigation data
 class NavigationState {
   final int selectedIndex;
   final String categoryFilter;
@@ -17,7 +15,6 @@ class NavigationState {
     required this.areaFilter,
   });
 
-  // Helper method to update the state easily
   NavigationState copyWith({
     int? selectedIndex,
     String? categoryFilter,
@@ -31,7 +28,6 @@ class NavigationState {
   }
 }
 
-// 3. The Notifier class (Replaces ChangeNotifier)
 class NavigationNotifier extends StateNotifier<NavigationState> {
   NavigationNotifier()
       : super(NavigationState(
@@ -48,7 +44,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     state = state.copyWith(
       categoryFilter: category,
       areaFilter: "All",
-      selectedIndex: 1, // requirement: Navigate to corresponding meal list [cite: 93]
+      selectedIndex: 1,
     );
   }
 
@@ -56,7 +52,7 @@ class NavigationNotifier extends StateNotifier<NavigationState> {
     state = state.copyWith(
       areaFilter: area,
       categoryFilter: "All",
-      selectedIndex: 1, // requirement: Go to Explore tab [cite: 94]
+      selectedIndex: 1,
     );
   }
 

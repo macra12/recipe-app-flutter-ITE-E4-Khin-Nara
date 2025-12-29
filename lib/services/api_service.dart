@@ -4,7 +4,6 @@ import '../models/meal_model.dart';
 import 'api_constants.dart';
 
 class ApiService {
-  // 1. Fetch all meals
   Future<List<Meal>> fetchMeals() async {
     final response = await http.get(
       Uri.parse('${ApiConstants.baseUrl}/meals'),
@@ -19,7 +18,6 @@ class ApiService {
     }
   }
 
-  // 2. Fetch categories for the Explore screen
   Future<List<String>> fetchCategories() async {
     final response = await http.get(
       Uri.parse('${ApiConstants.baseUrl}/categories'),

@@ -1,154 +1,175 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // REQUIRED:
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/meal_model.dart';
 import '../providers/favorite_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-// 1. Change to ConsumerWidget to access 'ref'
-class MealDetailScreen extends ConsumerWidget {
+class MealDetailScreen extends ConsumerStatefulWidget {
   final Meal meal;
   final String heroTag;
   const MealDetailScreen({super.key, required this.meal, required this.heroTag});
 
+  @override
+  ConsumerState<MealDetailScreen> createState() => _MealDetailScreenState();
+}
+
+class _MealDetailScreenState extends ConsumerState<MealDetailScreen> {
+  bool showIngredients = true;
+
+  List<String> get instructionSteps {
+    return widget.meal.instructions
+        .split(RegExp(r'\r\n|\n|\. '))
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+  }
+
   Future<void> _launchUrl(String? urlString) async {
     if (urlString == null || urlString.isEmpty) return;
     final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url)) throw Exception('Could not launch $url');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      throw Exception('Could not launch $url');
+    }
+  }
+
+  void _showActionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSheetItem(Icons.share, "Share Recipe", () {
+              Share.share("Check out this ${widget.meal.name} recipe!");
+              Navigator.pop(context);
+            }),
+            _buildSheetItem(Icons.link, "Copy Recipe Link", () {
+              Clipboard.setData(ClipboardData(text: widget.meal.source ?? "app.recipe.co/${widget.meal.id}"));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Link copied!")));
+              Navigator.pop(context);
+            }),
+            _buildSheetItem(
+                ref.watch(favoriteProvider.notifier).isFavorite(widget.meal.id) ? Icons.bookmark : Icons.bookmark_border,
+                "Save to Favorites",
+                    () {
+                  ref.read(favoriteProvider.notifier).toggleFavorite(widget.meal);
+                  Navigator.pop(context);
+                }
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSheetItem(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFFFF9800)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+      onTap: onTap,
+    );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // 2. Watch the favorite status using Riverpod ref.watch
-    final isFav = ref.watch(favoriteProvider.notifier).isFavorite(meal.id);
-
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF0F0F0F),
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
         slivers: [
-          // Fancy Hero Image with Gradient
           SliverAppBar(
-            expandedHeight: 380,
+            expandedHeight: 400,
             pinned: true,
-            stretch: true,
-            backgroundColor: Colors.orange,
-            // 3. Immersive Back Button & Actions
-            leading: CircleAvatar(
-              backgroundColor: Colors.black26,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Hero(
-                    tag: heroTag,
-                    child: Image.network(meal.imageUrl, fit: BoxFit.cover),
-                  ),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        stops: [0.0, 0.3],
-                        colors: [Colors.black54, Colors.transparent],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            backgroundColor: const Color(0xFF0F0F0F),
+            leading: IconButton(
+              icon: const CircleAvatar(backgroundColor: Colors.black26, child: Icon(Icons.arrow_back, color: Colors.white)),
+              onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              _buildAppBarAction(
-                icon: Icons.share,
-                onPressed: () => Share.share(
-                    "Check out this delicious ${meal.name} recipe! \n\nView here: ${meal.source ?? 'Recipe App'}"
-                ),
-              ),
-              _buildAppBarAction(
-                icon: isFav ? Icons.favorite : Icons.favorite_border,
-                iconColor: isFav ? Colors.red : Colors.black,
-                // 4. Update state via ref.read notifier
-                onPressed: () => ref.read(favoriteProvider.notifier).toggleFavorite(meal),
+              IconButton(
+                icon: const CircleAvatar(backgroundColor: Colors.black26, child: Icon(Icons.more_horiz, color: Colors.white)),
+                onPressed: () => _showActionSheet(context),
               ),
               const SizedBox(width: 10),
             ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Hero(
+                tag: widget.heroTag,
+                child: Image.network(widget.meal.imageUrl, fit: BoxFit.cover),
+              ),
+            ),
           ),
 
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(25),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E1E1E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+              ),
               child: Column(
+                // Ensure all elements align to the left
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(meal.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+                  Text(widget.meal.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      _buildBadge(meal.area, Colors.blue),
+                      _buildMiniBadge(widget.meal.area, Colors.blue),
                       const SizedBox(width: 8),
-                      _buildBadge(meal.category, Colors.orange),
+                      _buildMiniBadge(widget.meal.category, const Color(0xFFFF9800)),
                     ],
                   ),
 
-                  if (meal.tags != null && meal.tags!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      children: meal.tags!.split(',').map((tag) =>
-                          Text("#${tag.trim()}", style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic))
-                      ).toList(),
-                    ),
-                  ],
+                  const SizedBox(height: 25),
 
-                  const Divider(height: 40, thickness: 1),
-
-                  // Fancy Action Buttons
                   Row(
                     children: [
-                      if (meal.youtube != null && meal.youtube!.isNotEmpty)
+                      if (widget.meal.youtube != null && widget.meal.youtube!.isNotEmpty)
                         Expanded(
                           child: _buildActionButton(
-                            label: "Video Guide",
                             icon: Icons.play_circle_fill,
-                            color: Colors.red,
-                            onTap: () => _launchUrl(meal.youtube),
+                            label: "Watch Video",
+                            color: const Color(0xFFFF0000),
+                            onTap: () => _launchUrl(widget.meal.youtube),
                           ),
                         ),
-                      if (meal.source != null) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildActionButton(
-                            label: "Source",
-                            icon: Icons.language,
-                            color: Colors.blue,
-                            onTap: () => _launchUrl(meal.source),
-                          ),
+                      if (widget.meal.youtube != null && widget.meal.youtube!.isNotEmpty) const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildActionButton(
+                          icon: Icons.language,
+                          label: "View Source",
+                          color: const Color(0xFF129575),
+                          onTap: () => _launchUrl(widget.meal.source),
                         ),
-                      ],
+                      ),
                     ],
                   ),
 
                   const SizedBox(height: 35),
 
-                  // Ingredients with Checklist (Extra Mile Feature)
-                  const Text("Ingredients", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const Text("Check items off as you prepare", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                  const SizedBox(height: 15),
-                  IngredientChecklist(ingredients: meal.ingredients),
+                  Container(
+                    height: 55,
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F0F0F),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildToggleButton("Ingredients", showIngredients),
+                        _buildToggleButton("Instructions", !showIngredients),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 30),
 
-                  const SizedBox(height: 35),
-
-                  // Instructions Section
-                  const Text("Cooking Instructions", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 15),
-                  Text(meal.instructions, style: const TextStyle(fontSize: 16, height: 1.7, color: Colors.black87)),
-
-                  const SizedBox(height: 60),
+                  showIngredients ? _buildIngredientsList() : _buildStepFlow(),
                 ],
               ),
             ),
@@ -158,71 +179,106 @@ class MealDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBarAction({required IconData icon, required VoidCallback onPressed, Color iconColor = Colors.black}) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: IconButton(icon: Icon(icon, color: iconColor), onPressed: onPressed),
-    );
-  }
-
-  Widget _buildActionButton({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color.withOpacity(0.1),
-        foregroundColor: color,
-        elevation: 0,
+  Widget _buildActionButton({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+  Widget _buildToggleButton(String title, bool active) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => showIngredients = (title == "Ingredients")),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFFFF9800) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: active ? Colors.black : Colors.white60)),
+        ),
+      ),
     );
   }
-}
 
-class IngredientChecklist extends StatefulWidget {
-  final List<String> ingredients;
-  const IngredientChecklist({super.key, required this.ingredients});
-
-  @override
-  State<IngredientChecklist> createState() => _IngredientChecklistState();
-}
-
-class _IngredientChecklistState extends State<IngredientChecklist> {
-  late List<bool> _checked;
-  @override
-  void initState() {
-    super.initState();
-    _checked = List.filled(widget.ingredients.length, false);
+  Widget _buildIngredientsList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widget.meal.ingredients.map((ing) {
+        final parts = ing.split(': ');
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 15),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF262626),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, size: 20, color: Color(0xFFFF9800)),
+              const SizedBox(width: 15),
+              Expanded(child: Text(parts[0], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white))),
+              Text(parts.length > 1 ? parts[1] : "", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStepFlow() {
+    final steps = instructionSteps;
     return Column(
-      children: List.generate(widget.ingredients.length, (index) => CheckboxListTile(
-        value: _checked[index],
-        onChanged: (val) => setState(() => _checked[index] = val!),
-        title: Text(widget.ingredients[index],
-            style: TextStyle(
-              decoration: _checked[index] ? TextDecoration.lineThrough : null,
-              color: _checked[index] ? Colors.grey : Colors.black87,
-              fontSize: 15,
-            )),
-        activeColor: Colors.orange,
-        dense: true,
-        contentPadding: EdgeInsets.zero,
-        controlAffinity: ListTileControlAffinity.leading,
-      )),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(steps.length, (index) {
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: const Color(0xFF262626),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Step ${index + 1}", style: const TextStyle(color: Color(0xFFFF9800), fontWeight: FontWeight.w900, fontSize: 14)),
+              const SizedBox(height: 10),
+              Text(steps[index], style: const TextStyle(fontSize: 15, height: 1.6, color: Colors.white70)),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildMiniBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
     );
   }
 }

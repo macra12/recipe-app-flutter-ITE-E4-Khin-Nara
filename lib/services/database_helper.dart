@@ -25,7 +25,6 @@ class DatabaseHelper {
     );
   }
 
-  // Requirement: Create a "favorites" table
   Future _createDB(Database db, int version) async {
     await db.execute('''
       CREATE TABLE favorites (
@@ -37,7 +36,6 @@ class DatabaseHelper {
     ''');
   }
 
-  // Requirement: insertFavorite()
   Future<void> insertFavorite(Meal meal) async {
     final db = await instance.database;
     await db.insert('favorites', {
@@ -48,13 +46,11 @@ class DatabaseHelper {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // Requirement: deleteFavorite()
   Future<void> deleteFavorite(String id) async {
     final db = await instance.database;
     await db.delete('favorites', where: 'id = ?', whereArgs: [id]);
   }
 
-  // Requirement: getFavorites()
   Future<List<Map<String, dynamic>>> getFavorites() async {
     final db = await instance.database;
     return await db.query('favorites');

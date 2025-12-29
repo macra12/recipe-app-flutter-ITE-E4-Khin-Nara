@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // REQUIRED for Lab 3
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'main_wrapper.dart';
 
-// 1. Change to ConsumerStatefulWidget to satisfy Lab 3
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
   @override
@@ -35,36 +34,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Pre-cache the image to prevent "fitting" lag during first launch
-    precacheImage(CachedNetworkImageProvider(_onboardingData[0]["image"]!), context);
+    precacheImage(
+        CachedNetworkImageProvider(_onboardingData[0]["image"]!),
+        context
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get device size to ensure perfect "Hamburger Style" fit
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. FULL SCREEN BACKGROUND (Matches your design request)
           Positioned.fill(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 600),
-              child: CachedNetworkImage(
-                imageUrl: _onboardingData[_currentIndex]["image"]!,
-                key: ValueKey<int>(_currentIndex),
-                fit: BoxFit.cover,
-                width: size.width,
-                height: size.height,
-                placeholder: (context, url) => Container(color: Colors.black),
-                errorWidget: (context, url, error) => const Icon(Icons.error),
-              ),
+            child: CachedNetworkImage(
+              imageUrl: _onboardingData[_currentIndex]["image"]!,
+              fit: BoxFit.cover,
+              width: size.width,
+              height: size.height,
+              placeholder: (context, url) => Container(color: Colors.black),
+              errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.white24),
             ),
           ),
 
-          // 2. GRADIENT OVERLAY (Provides contrast for white text)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -73,16 +67,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   end: Alignment.bottomCenter,
                   stops: const [0.0, 0.4, 0.95],
                   colors: [
-                    Colors.black.withOpacity(0.1),
-                    Colors.black.withOpacity(0.4),
-                    Colors.black.withOpacity(0.95),
+                    Colors.black.withValues(alpha: 0.1),
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.black.withValues(alpha: 0.95),
                   ],
                 ),
               ),
             ),
           ),
 
-          // 3. UI CONTENT LAYER
           SafeArea(
             child: Column(
               children: [
@@ -90,7 +83,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 _buildPremiumTag(),
                 const Spacer(),
 
-                // Scrollable text area
                 SizedBox(
                   height: 280,
                   child: PageView.builder(
@@ -120,7 +112,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       const Icon(Icons.star, color: Colors.orange, size: 20),
       const SizedBox(width: 8),
       Text("60k+ Premium recipes",
-          style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16)),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          )),
     ]);
   }
 
@@ -170,13 +166,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.easeOutCubic);
             } else {
-              // Standard Navigation requirement [cite: 74]
               Navigator.pushReplacement(
                   context, MaterialPageRoute(builder: (_) => const MainWrapper()));
             }
           },
           style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE54646), // Red/Coral color from screenshot
+              backgroundColor: const Color(0xFFE54646),
+              elevation: 4,
+              shadowColor: const Color(0xFFE54646).withValues(alpha: 0.3),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
