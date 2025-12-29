@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/meal_model.dart';
 import '../providers/favorite_provider.dart';
 import '../providers/meal_provider.dart';
@@ -10,58 +10,49 @@ import '../screens/meal_detail_screen.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:math';
 import 'dart:async';
-import 'dart:io'; // Required for Platform check
-import 'package:flutter/foundation.dart'; // Required for kIsWeb
-
-class HomeScreen extends StatefulWidget {
-
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   StreamSubscription<AccelerometerEvent>? _shakeSubscription;
   DateTime? _lastShake;
-  Meal? _featuredMeal; // Persists the meal to prevent flickering
-  // Mapping for Category Emojis
+  Meal? _featuredMeal;
+
   final Map<String, String> _categoryIcons = {
     "Beef": "🥩", "Chicken": "🍗", "Dessert": "🍰",
     "Pasta": "🍝", "Seafood": "🍤", "Vegan": "🥗",
     "Pork": "🥓", "Vegetarian": "🥦"
   };
 
-  // Mapping for Area Flags
   final Map<String, String> _areaFlags = {
     "Italian": "🇮🇹", "British": "🇬🇧", "American": "🇺🇸",
     "French": "🇫🇷", "Indian": "🇮🇳", "Canadian": "🇨🇦", "Chinese": "🇨🇳"
   };
 
-
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final mealProvider = context.read<MealProvider>();
-        // Only load if the list is empty to prevent redundant calls seen in logs
-        if (mealProvider.meals.isEmpty) {
-          mealProvider.loadMeals().then((_) => _pickRandomMeal());
-        } else if (_featuredMeal == null) {
-          _pickRandomMeal();
-        }
+    Future.microtask(() {
+      final mealState = ref.read(mealProvider);
+      if (mealState.meals.isEmpty) {
+        ref.read(mealProvider.notifier).loadMeals().then((_) => _pickRandomMeal());
+      } else if (_featuredMeal == null) {
+        _pickRandomMeal();
       }
-      _startShakeDetection();
     });
+    _startShakeDetection();
   }
 
   void _pickRandomMeal() {
-    final meals = context.read<MealProvider>().meals;
-    if (meals.isNotEmpty && mounted) {
+    final mealState = ref.read(mealProvider);
+    if (mealState.meals.isNotEmpty && mounted) {
       setState(() {
-        _featuredMeal = meals[Random().nextInt(meals.length)];
+        _featuredMeal = mealState.meals[Random().nextInt(mealState.meals.length)];
       });
     }
   }
@@ -70,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       _shakeSubscription = accelerometerEventStream().listen((event) {
         final now = DateTime.now();
-        // 1-second cooldown to prevent the multiple updates seen in your logs
         if (_lastShake == null || now.difference(_lastShake!) > const Duration(seconds: 1)) {
           if (event.x.abs() > 15 || event.y.abs() > 15) {
             _lastShake = now;
@@ -82,17 +72,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
+  @override
+  void dispose() {
+    _shakeSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final mealProvider = context.watch<MealProvider>();
+    final mealState = ref.watch(mealProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: RefreshIndicator(
-        onRefresh: () => mealProvider.loadMeals().then((_) => _pickRandomMeal()),
-        child: mealProvider.isLoading && mealProvider.meals.isEmpty
+        onRefresh: () => ref.read(mealProvider.notifier).loadMeals().then((_) => _pickRandomMeal()),
+        child: mealState.isLoading && mealState.meals.isEmpty
             ? const Center(child: CircularProgressIndicator(color: Colors.orange))
             : CustomScrollView(
           slivers: [
@@ -101,14 +95,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // FIXED: Clean syntax for the Surprise Pick banner
-                  // FIXED BANNER LOGIC
                   if (_featuredMeal != null)
                     _buildFeaturedBanner(context, _featuredMeal!),
-                  if (_featuredMeal == null && mealProvider.meals.isNotEmpty)
-                    _buildFeaturedBanner(context, mealProvider.meals[0]),
+                  if (_featuredMeal == null && mealState.meals.isNotEmpty)
+                    _buildFeaturedBanner(context, mealState.meals[0]),
 
-                  _buildSmartRecommendationSection(mealProvider),
+                  _buildSmartRecommendationSection(),
                   _buildSectionHeader("Explore Categories"),
                   _buildHorizontalList(context, ["Beef", "Chicken", "Dessert", "Pasta", "Seafood", "Vegan"], isCategory: true),
                   _buildSectionHeader("Popular Areas"),
@@ -117,18 +109,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            _buildMainGrid(mealProvider),
+            _buildMainGrid(mealState.meals),
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
         ),
       ),
     );
   }
-  @override
-  void dispose() {
-    _shakeSubscription?.cancel();
-    super.dispose();
-  }
+
+  // --- ALL HELPER METHODS ARE NOW CORRECTLY INSIDE THE CLASS ---
 
   Widget _buildFancyHeader() {
     return SliverAppBar(
@@ -167,18 +156,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeaturedBanner(BuildContext context, dynamic meal) {
-    final String heroTag = 'meal-image-${meal.id}-banner'; // Unique for banner
+    final String heroTag = 'meal-image-${meal.id}-banner';
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => MealDetailScreen(meal: meal, heroTag: heroTag)
       )),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        height: 300, // Optimized height for a balanced look
+        height: 300,
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
-          // image: DecorationImage(image: NetworkImage(meal.imageUrl), fit: BoxFit.cover),
           boxShadow: [
             BoxShadow(
                 color: Colors.orange.withValues(alpha: 0.25),
@@ -192,13 +180,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. THE HERO IMAGE (The "Realistic" Motion part)
               Hero(
                 tag: heroTag,
                 child: Image.network(meal.imageUrl, fit: BoxFit.cover),
               ),
-
-              // 2. THE FANCY GRADIENT (Makes text readable)
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -208,8 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
-              // 3. THE TEXT CONTENT
               Padding(
                 padding: const EdgeInsets.all(25),
                 child: Column(
@@ -246,37 +229,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSmartRecommendationSection(MealProvider mealProvider) {
-    return Consumer<FavoriteProvider>(
-      builder: (context, favProvider, child) {
-        final favoriteIds = favProvider.favorites.map((f) => f['id'].toString()).toList();
-        final recommended = mealProvider.getRecommendedMeals(favProvider.topCategory, favoriteIds);
+  Widget _buildSmartRecommendationSection() {
+    final favorites = ref.watch(favoriteProvider);
+    final mealNotifier = ref.read(mealProvider.notifier);
+    final favoriteIds = favorites.map((f) => f['id'].toString()).toList();
+    final topCat = ref.read(favoriteProvider.notifier).topCategory;
+    final recommended = mealNotifier.getRecommendedMeals(topCat, favoriteIds);
 
-        if (recommended.isEmpty) return const SizedBox.shrink();
+    if (recommended.isEmpty) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader("Smart Suggestions ✨"),
-            SizedBox(
-              height: 220,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                scrollDirection: Axis.horizontal,
-                itemCount: recommended.length,
-                itemBuilder: (context, index) => SizedBox(
-                  width: 170,
-                  child: MealCard(meal: recommended[index], heroSuffix: "-rec"), // UNIQUE suffix
-                ),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Smart Suggestions ✨"),
+        SizedBox(
+          height: 220,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            scrollDirection: Axis.horizontal,
+            itemCount: recommended.length,
+            itemBuilder: (context, index) => SizedBox(
+              width: 170,
+              child: MealCard(meal: recommended[index], heroSuffix: "-rec"),
             ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 
-  // UPDATED: Horizontal list with Emojis and Flags
   Widget _buildHorizontalList(BuildContext context, List<String> items, {required bool isCategory}) {
     return SizedBox(
       height: 65,
@@ -286,32 +267,28 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final String item = items[index];
-          final String icon = isCategory
-              ? (_categoryIcons[item] ?? "🍽️")
-              : (_areaFlags[item] ?? "🏳️");
+          final String icon = isCategory ? (_categoryIcons[item] ?? "🍽️") : (_areaFlags[item] ?? "🏳️");
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
             child: ActionChip(
               onPressed: () {
                 if (isCategory) {
-                  context.read<NavigationProvider>().setCategoryAndNavigate(item);
+                  ref.read(navigationProvider.notifier).setCategoryAndNavigate(item);
                 } else {
-                  context.read<NavigationProvider>().setAreaAndNavigate(item);
+                  ref.read(navigationProvider.notifier).setAreaAndNavigate(item);
                 }
               },
               backgroundColor: Colors.white,
               elevation: 2,
-              shadowColor: Colors.black.withValues(alpha: 0.1),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               label: Row(
                 children: [
                   Text(icon, style: const TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
-                  Text(item,
-                      style: TextStyle(
-                          color: isCategory ? Colors.orange[800] : Colors.blue[800],
-                          fontWeight: FontWeight.bold)),
+                  Text(item, style: TextStyle(
+                      color: isCategory ? Colors.orange[800] : Colors.blue[800],
+                      fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -329,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMainGrid(MealProvider mealProvider) {
+  Widget _buildMainGrid(List<Meal> meals) {
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 15),
       sliver: SliverGrid(
@@ -337,13 +314,13 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 0.82, // Balanced ratio for grid items
+          childAspectRatio: 0.82,
         ),
         delegate: SliverChildBuilderDelegate(
-              (context, index) => MealCard(meal: mealProvider.meals[index], heroSuffix: "-grid"), // Unique suffix
-          childCount: mealProvider.meals.length,
+              (context, index) => MealCard(meal: meals[index], heroSuffix: "-grid"),
+          childCount: meals.length,
         ),
       ),
     );
   }
-}
+} // Final closing brace for the class

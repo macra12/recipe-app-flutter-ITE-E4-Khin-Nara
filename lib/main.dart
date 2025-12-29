@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:recipefinderapp/providers/meal_provider.dart';
-import 'package:recipefinderapp/providers/favorite_provider.dart'; // Add this import
-import 'screens/onboarding_screen.dart'; // Add this for Requirement 1
-import 'package:recipefinderapp/providers/navigation_provider.dart';
+import 'screens/onboarding_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async{
 
@@ -14,19 +11,13 @@ void main() async{
     statusBarColor: Colors.transparent,
     systemNavigationBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
+    systemNavigationBarIconBrightness: Brightness.light,
   ));
-
+  await Future.delayed(const Duration(milliseconds: 100));
   runApp(
-    MultiProvider(
-      providers: [
-        // Manages API data (Requirement 2 & 3)
-        ChangeNotifierProvider(create: (_) => MealProvider()),
-        // Manages Local Database / Favorites (Requirement 5)
-        ChangeNotifierProvider(create: (_) => FavoriteProvider()),
-        ChangeNotifierProvider(create: (_) => NavigationProvider()), // Add this
-      ],
-      child: const RecipeApp(),
-    ),
+      const ProviderScope(
+        child: RecipeApp(),
+      ),
   );
 }
 
@@ -39,11 +30,13 @@ class RecipeApp extends StatelessWidget {
       title: 'Recipe Finder',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        useMaterial3: true, // Use modern Material 3 components
         primarySwatch: Colors.orange,
-        // Ensure the scaffold background doesn't flash white during transitions
+        brightness: Brightness.dark, // Ensures text is white by default for your dark UI
         scaffoldBackgroundColor: Colors.black,
         appBarTheme: const AppBarTheme(
-          // Ensure app bars don't overlap the transparent status bar weirdly
+          backgroundColor: Colors.black,
+          elevation: 0,
           systemOverlayStyle: SystemUiOverlayStyle.light,
         ),
       ),

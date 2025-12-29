@@ -45,24 +45,23 @@ class Meal {
   });
 
   factory Meal.fromJson(Map<String, dynamic> json) {
-    // Handling the specific list structure from your JSON
     var ingredientsFromJson = json['ingredients'] as List? ?? [];
     List<String> ingredientsList = ingredientsFromJson.map((item) {
-      return "${item['ingredient']}: ${item['measure']}";
+      // Correctly parsing the API ingredient structure
+      return "${item['ingredient'] ?? ''}: ${item['measure'] ?? ''}";
     }).toList();
 
     return Meal(
-      // Matching your provided JSON keys exactly
       id: json['id']?.toString() ?? '',
       name: json['meal']?.toString() ?? 'Unknown Meal',
       category: json['category']?.toString() ?? 'General',
       area: json['area']?.toString() ?? 'Unknown Area',
       instructions: json['instructions']?.toString() ?? '',
       imageUrl: json['mealThumb']?.toString() ?? '',
-      tags: json['tags'],
+      ingredients: ingredientsList,
       youtube: json['youtube'],
       source: json['source'],
-      ingredients: ingredientsList,
+      tags: json['tags'],
     );
   }
 }

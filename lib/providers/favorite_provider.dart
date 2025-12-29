@@ -1,45 +1,53 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // REQUIRED
+import '../models/meal_model.dart';
 import '../services/database_helper.dart';
 
-class FavoriteProvider with ChangeNotifier {
-  List<Map<String, dynamic>> _favorites = [];
-  List<Map<String, dynamic>> get favorites => _favorites;
+// 1. Define the Global Provider
+final favoriteProvider = StateNotifierProvider<FavoriteNotifier, List<Map<String, dynamic>>>((ref) {
+  return FavoriteNotifier();
+});
 
-  // Smart Engine Logic: Calculates the most frequent category in favorites
+// 2. The Notifier (Replaces ChangeNotifier)
+class FavoriteNotifier extends StateNotifier<List<Map<String, dynamic>>> {
+  FavoriteNotifier() : super([]) {
+    // Automatically load favorites when the provider is initialized
+    loadFavorites();
+  }
+
+  // REFINED: Smart Engine Logic for Recommendations
   String get topCategory {
-    if (_favorites.isEmpty) return "None";
+    if (state.isEmpty) return "None";
     Map<String, int> counts = {};
-    for (var fav in _favorites) {
-      // Ensure we have a valid string and filter out "None" or empty tags
+    for (var fav in state) {
       String cat = fav['category']?.toString() ?? "";
       if (cat.isNotEmpty && cat != "None") {
         counts[cat] = (counts[cat] ?? 0) + 1;
       }
     }
-
     if (counts.isEmpty) return "None";
-
-    // Advanced tie-breaking: Pick the category with the most items
     var sortedKeys = counts.keys.toList()
       ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
     return sortedKeys.first;
   }
 
+  // Asynchronous operation using Future
   Future<void> loadFavorites() async {
-    _favorites = await DatabaseHelper.instance.getFavorites();
-    notifyListeners();
+    final favorites = await DatabaseHelper.instance.getFavorites();
+    state = favorites; // Directly update the state to trigger UI refresh
   }
 
-  Future<void> toggleFavorite(dynamic meal) async {
-    final String id = (meal is Map) ? meal['id'] : meal.id;
-    final isExist = _favorites.any((element) => element['id'] == id);
+  Future<void> toggleFavorite(Meal meal) async { // Use Meal model for type safety
+    final isExist = state.any((element) => element['id'] == meal.id);
+
     if (isExist) {
-      await DatabaseHelper.instance.deleteFavorite(id);
+      await DatabaseHelper.instance.deleteFavorite(meal.id);
     } else {
+      // Requirements: Save favorites locally
       await DatabaseHelper.instance.insertFavorite(meal);
     }
+    // Requirement: Refresh state to update UI reactively [cite: 103]
     await loadFavorites();
   }
 
-  bool isFavorite(String id) => _favorites.any((element) => element['id'] == id);
+  bool isFavorite(String id) => state.any((element) => element['id'] == id);
 }

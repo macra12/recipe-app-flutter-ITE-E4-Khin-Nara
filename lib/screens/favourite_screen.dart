@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // REQUIRED
 import '../providers/favorite_provider.dart';
 import '../models/meal_model.dart';
 import '../providers/meal_provider.dart';
@@ -7,33 +7,33 @@ import '../providers/navigation_provider.dart';
 import '../screens/meal_detail_screen.dart';
 import 'package:lottie/lottie.dart';
 
-class FavouriteScreen extends StatefulWidget {
+// 1. Change to ConsumerStatefulWidget
+class FavouriteScreen extends ConsumerStatefulWidget {
   const FavouriteScreen({super.key});
 
   @override
-  State<FavouriteScreen> createState() => _FavouriteScreenState();
+  ConsumerState<FavouriteScreen> createState() => _FavouriteScreenState();
 }
 
-class _FavouriteScreenState extends State<FavouriteScreen> {
+class _FavouriteScreenState extends ConsumerState<FavouriteScreen> {
   @override
-
   void initState() {
     super.initState();
+    // Use ref.read for initial loading logic
     Future.microtask(() {
-      if (!mounted) return; // FIX: use_build_context_synchronously
-      context.read<FavoriteProvider>().loadFavorites();
+      ref.read(favoriteProvider.notifier).loadFavorites();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final favProvider = context.watch<FavoriteProvider>();
+    // 2. Watch the favorites list from the provider
+    final favorites = ref.watch(favoriteProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: CustomScrollView(
         slivers: [
-          // 1. Fancy Sliver App Bar
           SliverAppBar(
             expandedHeight: 120.0,
             floating: false,
@@ -50,18 +50,18 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
             ),
           ),
 
-          // 2. Main Content Area
-          favProvider.favorites.isEmpty
-              ? SliverFillRemaining(child: _buildEmptyState(context))
+          // 3. Conditional UI based on state
+          favorites.isEmpty
+              ? SliverFillRemaining(child: _buildEmptyState())
               : SliverPadding(
             padding: const EdgeInsets.all(16.0),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                  final mealData = favProvider.favorites[index];
-                  return _buildFavouriteCard(context, mealData, favProvider);
+                  final mealData = favorites[index];
+                  return _buildFavouriteCard(mealData);
                 },
-                childCount: favProvider.favorites.length,
+                childCount: favorites.length,
               ),
             ),
           ),
@@ -70,8 +70,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     );
   }
 
-  // Widget: Modern Recipe Card for Favorites
-  Widget _buildFavouriteCard(BuildContext context, Map<String, dynamic> mealData, FavoriteProvider provider) {
+  Widget _buildFavouriteCard(Map<String, dynamic> mealData) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -79,9 +78,9 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4)
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -89,7 +88,9 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: () {
-            final fullMeal = context.read<MealProvider>().meals.firstWhere(
+            // Access the meal list from your Riverpod mealProvider
+            final meals = ref.read(mealProvider).meals;
+            final fullMeal = meals.firstWhere(
                   (m) => m.id == mealData['id'],
               orElse: () => Meal(
                 id: mealData['id'],
@@ -97,26 +98,23 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
                 imageUrl: mealData['imageUrl'],
                 category: mealData['category'],
                 area: 'Local Favorite',
-                // Better fallback text
                 instructions: "Please wait while we sync the full recipe...",
                 ingredients: [],
               ),
             );
-            // Pass a unique heroTag to avoid hero animation conflicts
+
             Navigator.push(context, MaterialPageRoute(
                 builder: (_) => MealDetailScreen(meal: fullMeal, heroTag: 'fav-${fullMeal.id}')
             ));
           },
           child: Row(
             children: [
-              // Image Section
               Image.network(
                 mealData['imageUrl'],
                 width: 120,
                 height: 100,
                 fit: BoxFit.cover,
               ),
-              // Info Section
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -138,10 +136,10 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
                   ),
                 ),
               ),
-              // Delete Button
               IconButton(
                 icon: const Icon(Icons.favorite, color: Colors.red),
-                onPressed: () => provider.toggleFavorite(mealData),
+                // Call the toggle logic via the notifier
+                onPressed: () => ref.read(favoriteProvider.notifier).toggleFavorite(mealData),
               ),
               const SizedBox(width: 8),
             ],
@@ -151,16 +149,13 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     );
   }
 
-  // Widget: Engaging Empty State
-  // Inside _FavouriteScreenState class in favourite_screen.dart
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // CREATIVITY: Animated empty cookbook for professional feel
             Lottie.asset(
               'assets/animations/empty_cook.json',
               height: 220,
@@ -179,8 +174,8 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                // Switch to the Home tab via the provider
-                context.read<NavigationProvider>().setIndex(0);
+                // Navigate back to Home using NavigationProvider (Riverpod)
+                ref.read(navigationProvider.notifier).setIndex(0);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,

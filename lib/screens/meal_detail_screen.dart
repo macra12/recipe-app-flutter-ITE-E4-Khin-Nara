@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart'; // For video and source links
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // REQUIRED:
+import 'package:url_launcher/url_launcher.dart';
 import '../models/meal_model.dart';
 import '../providers/favorite_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-class MealDetailScreen extends StatelessWidget {
+// 1. Change to ConsumerWidget to access 'ref'
+class MealDetailScreen extends ConsumerWidget {
   final Meal meal;
-  final String heroTag; // NEW: Receive the unique tag
+  final String heroTag;
   const MealDetailScreen({super.key, required this.meal, required this.heroTag});
 
-  // Helper to open YouTube or Source links
   Future<void> _launchUrl(String? urlString) async {
     if (urlString == null || urlString.isEmpty) return;
     final Uri url = Uri.parse(urlString);
@@ -18,17 +18,29 @@ class MealDetailScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 2. Watch the favorite status using Riverpod ref.watch
+    final isFav = ref.watch(favoriteProvider.notifier).isFavorite(meal.id);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          // 1. Fancy Hero Image with Gradient
+          // Fancy Hero Image with Gradient
           SliverAppBar(
-            expandedHeight: 350,
+            expandedHeight: 380,
             pinned: true,
             stretch: true,
             backgroundColor: Colors.orange,
+            // 3. Immersive Back Button & Actions
+            leading: CircleAvatar(
+              backgroundColor: Colors.black26,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -37,13 +49,12 @@ class MealDetailScreen extends StatelessWidget {
                     tag: heroTag,
                     child: Image.network(meal.imageUrl, fit: BoxFit.cover),
                   ),
-
-                  // Gradient overlay to make text readable
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
+                        stops: [0.0, 0.3],
                         colors: [Colors.black54, Colors.transparent],
                       ),
                     ),
@@ -52,38 +63,30 @@ class MealDetailScreen extends StatelessWidget {
               ),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.share, color: Colors.white),
+              _buildAppBarAction(
+                icon: Icons.share,
                 onPressed: () => Share.share(
-                    "Check out this delicious ${meal.name} recipe I found on Recipe Finder! \n\nView here: ${meal.source ?? 'Open App'}"
+                    "Check out this delicious ${meal.name} recipe! \n\nView here: ${meal.source ?? 'Recipe App'}"
                 ),
               ),
-              Consumer<FavoriteProvider>(
-                builder: (context, favProvider, child) {
-                  final isFav = favProvider.isFavorite(meal.id);
-                  return Container(
-                    margin: const EdgeInsets.only(right: 15, top: 8, bottom: 8),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: IconButton(
-                      icon: Icon(isFav ? Icons.favorite : Icons.favorite_border),
-                      color: isFav ? Colors.red : Colors.grey,
-                      onPressed: () => favProvider.toggleFavorite(meal),
-                    ),
-                  );
-                },
+              _buildAppBarAction(
+                icon: isFav ? Icons.favorite : Icons.favorite_border,
+                iconColor: isFav ? Colors.red : Colors.black,
+                // 4. Update state via ref.read notifier
+                onPressed: () => ref.read(favoriteProvider.notifier).toggleFavorite(meal),
               ),
+              const SizedBox(width: 10),
             ],
           ),
 
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. Title and Tags
-                  Text(meal.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
+                  Text(meal.name, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       _buildBadge(meal.area, Colors.blue),
@@ -92,74 +95,60 @@ class MealDetailScreen extends StatelessWidget {
                     ],
                   ),
 
-                  if (meal.tags != null) ...[
-                    const SizedBox(height: 12),
+                  if (meal.tags != null && meal.tags!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,
                       children: meal.tags!.split(',').map((tag) =>
-                          Text("#$tag", style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic))
+                          Text("#${tag.trim()}", style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic))
                       ).toList(),
                     ),
                   ],
 
-                  const Divider(height: 40),
+                  const Divider(height: 40, thickness: 1),
 
-                  // 3. Fancy Action Buttons (Video & Source)
+                  // Fancy Action Buttons
                   Row(
                     children: [
                       if (meal.youtube != null && meal.youtube!.isNotEmpty)
                         Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _launchUrl(meal.youtube),
-                            icon: const Icon(Icons.play_circle_fill, color: Colors.red),
-                            label: const Text("Watch Video"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red[50], foregroundColor: Colors.red[900]),
+                          child: _buildActionButton(
+                            label: "Video Guide",
+                            icon: Icons.play_circle_fill,
+                            color: Colors.red,
+                            onTap: () => _launchUrl(meal.youtube),
                           ),
                         ),
                       if (meal.source != null) ...[
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _launchUrl(meal.source),
-                            icon: const Icon(Icons.language, color: Colors.blue),
-                            label: const Text("Source"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[50], foregroundColor: Colors.blue[900]),
+                          child: _buildActionButton(
+                            label: "Source",
+                            icon: Icons.language,
+                            color: Colors.blue,
+                            onTap: () => _launchUrl(meal.source),
                           ),
                         ),
                       ],
                     ],
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 35),
 
-                  // 4. Ingredients Section
-                  const Text(
-                      "Ingredients (Check as you cook)",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)
-                  ),
-                  const SizedBox(height: 10),
-
-                  // ...meal.ingredients.map((ing) => Container(
-                  //   margin: const EdgeInsets.only(bottom: 8),
-                  //   padding: const EdgeInsets.all(12),
-                  //   decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-                  //   child: Row(
-                  //     children: [
-                  //       const Icon(Icons.shopping_basket_outlined, size: 20, color: Colors.orange),
-                  //       const SizedBox(width: 12),
-                  //       Expanded(child: Text(ing, style: const TextStyle(fontSize: 16))),
-                  //     ],
-                  //   ),
-                  // )),
+                  // Ingredients with Checklist (Extra Mile Feature)
+                  const Text("Ingredients", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text("Check items off as you prepare", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                  const SizedBox(height: 15),
                   IngredientChecklist(ingredients: meal.ingredients),
-                  const SizedBox(height: 30),
 
-                  // 5. Instructions Section
-                  const Text("Instructions", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  Text(meal.instructions, style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87)),
+                  const SizedBox(height: 35),
 
-                  const SizedBox(height: 50),
+                  // Instructions Section
+                  const Text("Cooking Instructions", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 15),
+                  Text(meal.instructions, style: const TextStyle(fontSize: 16, height: 1.7, color: Colors.black87)),
+
+                  const SizedBox(height: 60),
                 ],
               ),
             ),
@@ -169,17 +158,38 @@ class MealDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildAppBarAction({required IconData icon, required VoidCallback onPressed, Color iconColor = Colors.black}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+      child: IconButton(icon: Icon(icon, color: iconColor), onPressed: onPressed),
+    );
+  }
+
+  Widget _buildActionButton({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 20),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.1),
+        foregroundColor: color,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   Widget _buildBadge(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1), // FIX: deprecated_member_use
-          borderRadius: BorderRadius.circular(20)
-      ),
-      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
     );
   }
 }
+
 class IngredientChecklist extends StatefulWidget {
   final List<String> ingredients;
   const IngredientChecklist({super.key, required this.ingredients});
@@ -205,9 +215,12 @@ class _IngredientChecklistState extends State<IngredientChecklist> {
         title: Text(widget.ingredients[index],
             style: TextStyle(
               decoration: _checked[index] ? TextDecoration.lineThrough : null,
-              color: _checked[index] ? Colors.grey : Colors.black,
+              color: _checked[index] ? Colors.grey : Colors.black87,
+              fontSize: 15,
             )),
         activeColor: Colors.orange,
+        dense: true,
+        contentPadding: EdgeInsets.zero,
         controlAffinity: ListTileControlAffinity.leading,
       )),
     );
